@@ -29,7 +29,19 @@ require_once(get_template_directory().'/functions/page-navi.php');
 require_once(get_template_directory().'/functions/translation/translation.php'); 
 
 // Adds site styles to the WordPress editor
-// require_once(get_template_directory().'/functions/editor-styles.php'); 
+require_once(get_template_directory().'/functions/editor-styles.php'); 
+
+// ACF Options
+require_once(get_template_directory().'/functions/acf-json.php');
+
+// ACF json
+require_once(get_template_directory().'/functions/acf-options.php');
+
+// Disable Gutenberg
+// require_once(get_template_directory().'/functions/disable-gutenberg.php'); 
+
+// Add Page Slug to Body Class
+// require_once(get_template_directory().'/functions/page-slug-body-class');
 
 // Remove Emoji Support
 // require_once(get_template_directory().'/functions/disable-emoji.php'); 
