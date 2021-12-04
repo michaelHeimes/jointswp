@@ -1,69 +1,102 @@
 <?php
 // This file handles the admin area and functions - You can use this file to make changes to the dashboard.
 
-/************* DASHBOARD WIDGETS *****************/
-// Disable default dashboard widgets
-function disable_default_dashboard_widgets() {
-	// Remove_meta_box('dashboard_right_now', 'dashboard', 'core');    // Right Now Widget
-	remove_meta_box('dashboard_recent_comments', 'dashboard', 'core'); // Comments Widget
-	remove_meta_box('dashboard_incoming_links', 'dashboard', 'core');  // Incoming Links Widget
-	remove_meta_box('dashboard_plugins', 'dashboard', 'core');         // Plugins Widget
-
-	// Remove_meta_box('dashboard_quick_press', 'dashboard', 'core');  // Quick Press Widget
-	remove_meta_box('dashboard_recent_drafts', 'dashboard', 'core');   // Recent Drafts Widget
-	remove_meta_box('dashboard_primary', 'dashboard', 'core');         //
-	remove_meta_box('dashboard_secondary', 'dashboard', 'core');       //
-
-	// Removing plugin dashboard boxes
-	remove_meta_box('yoast_db_widget', 'dashboard', 'normal');         // Yoast's SEO Plugin Widget
-
-}
-
-/*
-For more information on creating Dashboard Widgets, view:
-http://digwp.com/2010/10/customize-wordpress-dashboard/
-*/
-
-// RSS Dashboard Widget
-function joints_rss_dashboard_widget() {
-	if(function_exists('fetch_feed')) {
-		include_once(ABSPATH . WPINC . '/feed.php');               // include the required file
-		$feed = fetch_feed('http://jointswp.com/feed/rss/');        // specify the source feed
-		$limit = $feed->get_item_quantity(5);                      // specify number of items
-		$items = $feed->get_items(0, $limit);                      // create an array of items
-	}
-	if ($limit == 0) echo '<div>' . __( 'The RSS Feed is either empty or unavailable.', 'jointswp' ) . '</div>';   // fallback message
-	else foreach ($items as $item) { ?>
-
-	<h4 style="margin-bottom: 0;">
-		<a href="<?php echo $item->get_permalink(); ?>" title="<?php echo mysql2date(__('j F Y @ g:i a', 'jointswp'), $item->get_date('Y-m-d H:i:s')); ?>" target="_blank">
-			<?php echo $item->get_title(); ?>
-		</a>
-	</h4>
-	<p style="margin-top: 0.5em;">
-		<?php echo substr($item->get_description(), 0, 200); ?>
-	</p>
-	<?php }
-}
-
-// Calling all custom dashboard widgets
-function joints_custom_dashboard_widgets() {
-	wp_add_dashboard_widget('joints_rss_dashboard_widget', __('Custom RSS Feed (Customize in admin.php)', 'jointswp'), 'joints_rss_dashboard_widget');
-	/*
-	Be sure to drop any other created Dashboard Widgets
-	in this function and they will all load.
-	*/
-}
-// removing the dashboard widgets
-add_action('admin_menu', 'disable_default_dashboard_widgets');
-// adding any custom widgets
-add_action('wp_dashboard_setup', 'joints_custom_dashboard_widgets');
-
 /************* CUSTOMIZE ADMIN *******************/
 // Custom Backend Footer
 function joints_custom_admin_footer() {
-	_e('<span id="footer-thankyou">Developed by <a href="#" target="_blank">Your Site Name</a></span>.', 'jointswp');
+// 	_e('<span id="footer-thankyou">Developed by <a href="https://proprdesign.com/" target="_blank">Propr Design</a></span>.', 'jointswp');
 }
 
 // adding it to the admin area
 add_filter('admin_footer_text', 'joints_custom_admin_footer');
+
+/* WP Editor
+ */
+
+	// Don't remove additional line breaks in editor
+	// http://tinymce.moxiecode.com/wiki.php/Configuration
+	function custom_tinymce_config( $init ) {
+		$init['remove_linebreaks'] = false; 
+		return $init;
+	}
+	add_filter('tiny_mce_before_init', 'custom_tinymce_config');
+
+	function dg_tiny_mce_remove_h1( $in ) {
+	        $in['block_formats'] = "Paragraph=p; Heading 2=h2; Heading 3=h3; Heading 4=h4; Heading 5=h5; Heading 6=h6;Preformatted=pre";
+	    return $in;
+	}
+	add_filter( 'tiny_mce_before_init', 'dg_tiny_mce_remove_h1' );
+
+
+/**
+ * Misc edits to the Wordpress Admin
+ */
+
+	// Remove useless dashboard widgets
+	function remove_dashboard_widgets() {
+		remove_meta_box('dashboard_incoming_links', 'dashboard', 'normal');
+		remove_meta_box('dashboard_plugins', 'dashboard', 'normal');
+		remove_meta_box('dashboard_primary', 'dashboard', 'normal');
+		remove_meta_box('dashboard_secondary', 'dashboard', 'normal');
+	}
+	add_action('admin_init', 'remove_dashboard_widgets');
+
+
+	// add styleselect to editor
+	function add_styleselect($buttons) {
+		array_unshift($buttons, 'styleselect');
+		return $buttons;
+	}
+	add_filter('mce_buttons_2', 'add_styleselect');
+
+
+	// add default styles to styleselect
+	function add_styleselect_classes( $init_array ) {  
+		// Define the style_formats array
+		$style_formats = array(  
+			// Each array child is a format with it's own settings
+	        array(  
+	            'title' => 'Large Blue Text',  
+	            'block' => 'span',  
+	            'classes' => 'large-blue-text',
+	            'wrapper' => true,
+	        ),
+		);
+		// Insert the array, JSON ENCODED, into 'style_formats'
+		$init_array['style_formats'] = json_encode( $style_formats );  
+		
+		return $init_array;  
+	} 
+	add_filter( 'tiny_mce_before_init', 'add_styleselect_classes' ); 
+
+
+	// add editor-style.css
+	function theme_editor_style() {
+		add_editor_style( get_template_directory_uri() . '/assets/css/editor-style.css' );
+	}
+	add_action('init', 'theme_editor_style');
+
+
+	// remove revisions meta box and recreate on right side for all post types
+	function relocate_revisions_metabox() {
+		$args = array(
+		'public'   => true,
+		'_builtin' => false
+		); 
+		$output = 'names'; // names or objects
+		$post_types = get_post_types($args,$output); 
+		foreach ($post_types  as $post_type) {
+			remove_meta_box('revisionsdiv',$post_type,'normal'); 
+			add_meta_box('revisionssidediv2', __('Revisions'), 'post_revisions_meta_box', $post_type, 'side', 'low');
+		}
+		
+		// page 
+		remove_meta_box('revisionsdiv','page','normal'); 
+		add_meta_box('revisionssidediv2', __('Revisions'), 'post_revisions_meta_box', 'page', 'side', 'low');
+		
+		// post 
+		remove_meta_box('revisionsdiv','post','normal'); 
+		add_meta_box('revisionssidediv2', __('Revisions'), 'post_revisions_meta_box', 'post', 'side', 'low');
+		
+	}
+	add_action('do_meta_boxes','relocate_revisions_metabox', 30);
